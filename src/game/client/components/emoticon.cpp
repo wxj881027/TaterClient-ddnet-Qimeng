@@ -79,13 +79,16 @@ void CEmoticon::OnRender()
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 
+	// static const auto QuadEaseInOut = [](float t) -> float {
+	//	if(t == 0.0f)
+	//		return 0.0f;
+	//	if(t == 1.0f)
+	//		return 1.0f;
+	//	return (t < 0.5f) ? (2.0f * t * t) : (1.0f - std::pow(-2.0f * t + 2.0f, 2) / 2.0f);
+	// };
 	static const auto QuadEaseInOut = [](float t) -> float {
-		if(t == 0.0f)
-			return 0.0f;
-		if(t == 1.0f)
-			return 1.0f;
-		return (t < 0.5f) ? (2.0f * t * t) : (1.0f - std::pow(-2.0f * t + 2.0f, 2) / 2.0f);
-	};
+		return std::sin(t * pi / 2.0f);
+	}; // 正弦缓动
 
 	static const float s_InnerMouseLimitRadius = 40.0f;
 	static const float s_InnerOuterMouseBoundaryRadius = 110.0f;
@@ -126,7 +129,7 @@ void CEmoticon::OnRender()
 		if(AnimationTime == 0.0f)
 			return;
 
-		m_AnimationTime -= Client()->RenderFrameTime() * 3.0f; // Close animation 3x faster
+		m_AnimationTime -= Client()->RenderFrameTime() * 1.0f; // 关闭动画 1.0x
 		if(m_AnimationTime <= 0.0f)
 		{
 			m_AnimationTime = 0.0f;
@@ -200,18 +203,46 @@ void CEmoticon::OnRender()
 	else if(length(m_SelectorMouse) > s_InnerMouseLimitRadius)
 		m_SelectedEyeEmote = (int)(SelectedAngle / (2.0f * pi) * NUM_EMOTES);
 
+	// if(m_SelectedEmote != -1)
+	//{
+	//	m_aAnimationTimeItems[m_SelectedEmote] += Client()->RenderFrameTime() * 2.0f; // 为了抵消先前的减少
+	//	if(m_aAnimationTimeItems[m_SelectedEmote] >= ItemAnimationTime)
+	//		m_aAnimationTimeItems[m_SelectedEmote] = ItemAnimationTime;
+	// }//最外圈表情
+
 	if(m_SelectedEmote != -1)
 	{
-		m_aAnimationTimeItems[m_SelectedEmote] += Client()->RenderFrameTime() * 2.0f; // To counteract earlier decrement
-		if(m_aAnimationTimeItems[m_SelectedEmote] >= ItemAnimationTime)
-			m_aAnimationTimeItems[m_SelectedEmote] = ItemAnimationTime;
-	}
+		float &Time = m_aAnimationTimeItems[m_SelectedEmote];
+		Time += Client()->RenderFrameTime() * 2.0f;
+
+		// 如果当前动画太短，强制设置一个最小放大值
+		const float MinAnimFraction = 0.3f; // 即至少达到 30%
+		if(Time < ItemAnimationTime * MinAnimFraction)
+			Time = ItemAnimationTime * MinAnimFraction;
+
+		if(Time >= ItemAnimationTime)
+			Time = ItemAnimationTime;
+	} // 最外圈表情
+
+	// if(m_SelectedEyeEmote != -1)
+	//{
+	//	m_aAnimationTimeItems[NUM_EMOTICONS + m_SelectedEyeEmote] += Client()->RenderFrameTime() * 2.0f; // To counteract earlier decrement
+	//	if(m_aAnimationTimeItems[NUM_EMOTICONS + m_SelectedEyeEmote] >= ItemAnimationTime)
+	//		m_aAnimationTimeItems[NUM_EMOTICONS + m_SelectedEyeEmote] = ItemAnimationTime;
+	// }//内圈眼神表情
 	if(m_SelectedEyeEmote != -1)
 	{
-		m_aAnimationTimeItems[NUM_EMOTICONS + m_SelectedEyeEmote] += Client()->RenderFrameTime() * 2.0f; // To counteract earlier decrement
-		if(m_aAnimationTimeItems[NUM_EMOTICONS + m_SelectedEyeEmote] >= ItemAnimationTime)
-			m_aAnimationTimeItems[NUM_EMOTICONS + m_SelectedEyeEmote] = ItemAnimationTime;
-	}
+		float &Time = m_aAnimationTimeItems[NUM_EMOTICONS + m_SelectedEyeEmote];
+		Time += Client()->RenderFrameTime() * 2.0f;
+
+		// 至少放大到 25%
+		const float MinAnimFraction = 0.25f;
+		if(Time < ItemAnimationTime * MinAnimFraction)
+			Time = ItemAnimationTime * MinAnimFraction;
+
+		if(Time >= ItemAnimationTime)
+			Time = ItemAnimationTime;
+	} // 内圈眼神表情
 
 	const vec2 ScreenCenter = Screen.Center();
 
@@ -221,7 +252,7 @@ void CEmoticon::OnRender()
 
 	Graphics()->TextureClear();
 	Graphics()->QuadsBegin();
-	Graphics()->SetColor(0.0f, 0.0f, 0.0f, 0.3f * aAnimationPhase[0]);
+	Graphics()->SetColor(0.0f, 0.0f, 0.0f, 0.13f * aAnimationPhase[0]); // 最外圈黑色背景
 	Graphics()->DrawCircle(ScreenCenter.x, ScreenCenter.y, s_OuterCircleRadius * aAnimationPhase[0], 64);
 	Graphics()->QuadsEnd();
 
@@ -248,7 +279,7 @@ void CEmoticon::OnRender()
 	{
 		Graphics()->TextureClear();
 		Graphics()->QuadsBegin();
-		Graphics()->SetColor(1.0f, 1.0f, 1.0f, 0.3f * aAnimationPhase[2]);
+		Graphics()->SetColor(1.0f, 1.0f, 1.0f, 0.13f * aAnimationPhase[2]); // 眼神白色背景
 		Graphics()->DrawCircle(ScreenCenter.x, ScreenCenter.y, s_InnerCircleRadius * aAnimationPhase[2], 64);
 		Graphics()->QuadsEnd();
 
@@ -268,7 +299,7 @@ void CEmoticon::OnRender()
 
 		Graphics()->TextureClear();
 		Graphics()->QuadsBegin();
-		Graphics()->SetColor(0.0f, 0.0f, 0.0f, 0.3f * aAnimationPhase[4]);
+		Graphics()->SetColor(0.0f, 0.0f, 0.0f, 0.1f * aAnimationPhase[4]); // 人物中心黑色背景
 		Graphics()->DrawCircle(ScreenCenter.x, ScreenCenter.y, 30.0f * aAnimationPhase[4], 64);
 		Graphics()->QuadsEnd();
 	}
