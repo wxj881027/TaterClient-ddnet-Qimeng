@@ -148,7 +148,7 @@ class CGameClient : public IGameClient
 {
 public:
 	friend class CTClient;
-
+	vec2 WorldToScreen(vec2 WorldPos);
 	// all components
 	CInfoMessages m_InfoMessages;
 	CCamera m_Camera;
@@ -464,6 +464,9 @@ public:
 		int m_ClientId;
 
 	public:
+		char m_aHeadChatMsg[256] = "";
+		int64_t m_HeadChatMsgTime = 0;
+
 		int m_UseCustomColor;
 		int m_ColorBody;
 		int m_ColorFeet;

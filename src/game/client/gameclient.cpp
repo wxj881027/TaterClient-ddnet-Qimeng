@@ -801,6 +801,51 @@ void CGameClient::OnRender()
 	const ColorRGBA ClearColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClOverlayEntities ? g_Config.m_ClBackgroundEntitiesColor : g_Config.m_ClBackgroundColor));
 	Graphics()->Clear(ClearColor.r, ClearColor.g, ClearColor.b);
 
+	// 头顶聊天气泡渲染（仅自己）
+	{
+		int LocalID = m_aLocalIds[g_Config.m_ClDummy];
+		if(LocalID >= 0 && LocalID < MAX_CLIENTS && m_Snap.m_aCharacters[LocalID].m_Active)
+		{
+			const char *pMsg = m_aClients[LocalID].m_aHeadChatMsg;
+			int64_t MsgTime = m_aClients[LocalID].m_HeadChatMsgTime;
+
+			if(pMsg[0] && (time_get() - MsgTime < time_freq() * 5)) // 显示5秒
+			{
+				float Elapsed = (time_get() - MsgTime) / (float)time_freq(); // 秒
+				float Alpha = 1.0f;
+				const float FontSize = 24.0f;
+
+				if(Elapsed < 0.5f) // 渐入
+					Alpha = clamp(Elapsed / 0.5f, 0.0f, 1.0f);
+				else if(Elapsed > 4.5f) // 渐出
+					Alpha = clamp(1.0f - (Elapsed - 4.5f) / 0.5f, 0.0f, 1.0f);
+
+				// 获取当前角色位置
+				vec2 Pos = mix(
+					vec2(m_Snap.m_aCharacters[LocalID].m_Prev.m_X, m_Snap.m_aCharacters[LocalID].m_Prev.m_Y),
+					vec2(m_Snap.m_aCharacters[LocalID].m_Cur.m_X, m_Snap.m_aCharacters[LocalID].m_Cur.m_Y),
+					Client()->IntraGameTick(g_Config.m_ClDummy));
+
+
+				// 准备渲染文本
+				CTextCursor Cursor;
+				TextRender()->SetCursor(&Cursor, 0, 0, FontSize, TEXTFLAG_RENDER);
+				Cursor.m_LineWidth = -1;
+				Cursor.m_MaxLines = 1;
+				TextRender()->TextEx(&Cursor, pMsg, -1);
+
+				// 文本居中渲染位置
+				vec2 TextPos = Pos + vec2(-Cursor.m_X / 2.0f, -140.0f);
+
+				// 设置颜色并绘制
+				TextRender()->TextColor(1, 1, 1, Alpha); // 白色
+				TextRender()->SetCursor(&Cursor, TextPos.x, TextPos.y, FontSize, TEXTFLAG_RENDER);
+				TextRender()->TextEx(&Cursor, pMsg, -1);
+			}
+		}
+	}
+
+
 	// check if multi view got activated
 	if(!m_MultiView.m_IsInit && m_MultiViewActivated)
 	{

@@ -1436,6 +1436,7 @@ void CChat::SendChat(int Team, const char *pLine)
 
 void CChat::SendChatQueued(const char *pLine)
 {
+
 	if(!pLine || str_length(pLine) < 1)
 		return;
 
@@ -1458,5 +1459,11 @@ void CChat::SendChatQueued(const char *pLine)
 		CHistoryEntry *pEntry = m_History.Allocate(sizeof(CHistoryEntry) + Length);
 		pEntry->m_Team = m_Mode == MODE_ALL ? 0 : 1;
 		str_copy(pEntry->m_aText, pLine, Length + 1);
+	}
+	int LocalID = m_pClient->m_aLocalIds[g_Config.m_ClDummy];
+	if(LocalID >= 0 && LocalID < MAX_CLIENTS)
+	{
+		str_copy(m_pClient->m_aClients[LocalID].m_aHeadChatMsg, pLine, sizeof(m_pClient->m_aClients[LocalID].m_aHeadChatMsg));
+		m_pClient->m_aClients[LocalID].m_HeadChatMsgTime = time_get();
 	}
 }
